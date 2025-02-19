@@ -21,11 +21,11 @@
 ## Introduction
 This document captures the steps required to release a new version of the
 Orchestrator Operator interacting with Konflux's resources using the CLI, as
-opposed to the Konflux UI which can also achieve the same goals. The purposse of
+opposed to the Konflux UI which can also achieve the same goals. The purpose of
 this document is to allow users to benefit from a CLI approach on releasing the
 operator, with the end goal of achieving as much automation as possible to
 reduce the manual effort required to release it with Konflux. Note that
-everything that is describe here can be achieved as well using the [Konflux
+everything that is described here can be achieved as well using the [Konflux
 UI](https://console.redhat.com/application-pipeline/workspaces).
 
 ## Audience
@@ -41,7 +41,7 @@ acquainted with it and understand the release process as described in it.
 
 ## Prerequisites:
 To be able to release the operator, you will need first to have access to the
-orchestrator-releng workspace in konflux via the [Red Hat
+orchestrator-releng workspace in Konflux via the [Red Hat
 Console](https://console.redhat.com/application-pipeline/workspaces/orchestrator-releng/applications).
 If you don't, please reach out to @jordigilh, @masayag, @rgolangh or
 @pkliczewski to request access. You'll also need to be able to create PRs to the
@@ -86,7 +86,7 @@ Releasing the operator is a 3 stage operation:
   pullspec of the images pushed to the staging registry.
 
 Production releases builds on top of the staging releases to do more or less the
-same, except that in this case it goes though a more detailed scrutiny, ending
+same, except that in this case it goes through a more detailed scrutiny, ending
 up in the production registry. Past this step, it's the same FBC graph
 generation using the image pullspec in production.
 
@@ -103,7 +103,7 @@ The release of the orchestrator includes support for multiple versions within
 the same repository. The git repository for the helm operator defines branches
 as `release-X.Y` as the location of the semantic X and Y version. In turn,
 Konflux supports different versions by defining their own uniquely named
-application, with each containing their own set of compoments, also unique in
+application, with each containing their own set of components, also unique in
 their name, such as `controller-rhel9-operator-1-2` or
 `controller-rhel9-operator-1-3`.
 
@@ -131,13 +131,13 @@ releaseVersion=$(echo $applicationName| sed  's/helm-operator//g')
 ```
 
 Retrieve the names of the components that match the controller and bundle based
-on the prefixed compoment names as we know them `controller-rhel9-operator` and
+on the prefixed component names as we know them `controller-rhel9-operator` and
 `orchestrator-operator-bundle`:
 ```console
 controller_rhel9_operator=$(oc get components -ojsonpath='{range .items[?(@.spec.application=="'$applicationName'")]}{.metadata.name}{"\n"}{end}}'|grep controller-rhel9-operator)
 orchestrator_operator_bundle=$(oc get components -ojsonpath='{range .items[?(@.spec.application=="'$applicationName'")]}{.metadata.name}{"\n"}{end}}'|grep orchestrator-operator-bundle)
-echo "Controller compoment registered as $controller_rhel9_operator"
-echo "Bundle compoment registered as $orchestrator_operator_bundle"
+echo "Controller component registered as $controller_rhel9_operator"
+echo "Bundle component registered as $orchestrator_operator_bundle"
 ```
 
 ### Staging release
@@ -151,7 +151,7 @@ application, in our case the controller and bundle.
 * Filter the latest snapshot. Keep in mind that we need to filter based on the
   bundle push event since that will most probably contain the nudged update from
   the controller. But first, let's capture the component names based on the
-  application, since each release has it's own component name associated to it.
+  application, since each release has its own component name associated to it.
 
 
 Now we're ready to retrieve the snapshots and filter by those that were
@@ -224,7 +224,7 @@ If the release fails, follow the [troubleshooting](#release-pipeline-failed)
 guide to find out the root cause.
 
 * Validate that the container images are in the staging registry by inspecting
-  them with skopeo. The pullspec of the images are defined in the advisory
+  them with Skopeo. The pullspec of the images are defined in the advisory
   manifest:
 
 ```console
@@ -241,7 +241,7 @@ that they are ready to be used to release a new FBC version.
 #### Releasing a new FBC index to staging
 To release a new version of the operator in the Red Hat Catalog, you'll have to
 release an updated FBC graph of the IIB catalog. For staging, this means you'll
-end upd having to add a new IIB catalog source to your cluster so that your new
+end up having to add a new IIB catalog source to your cluster so that your new
 operator is available for consumption. In production however, this is not
 necessary as the release is published directly to the production index.
 
@@ -259,7 +259,7 @@ git clone https://github.com/rhdhorchestrator/orchestrator-fbc.git
 ```
 
 * Update the graph.yaml in the OCP version following the FBC documentation to
-  ensure that each each version published has an upgrade path. Check [this
+  ensure that each version published has an upgrade path. Check [this
   page](https://docs.openshift.com/container-platform/4.17/extensions/catalogs/fbc.html#olm-channel-schema_fbc)
   to understand the different options when updating the fragment. The most
   common case is when updating the [z-stream
@@ -344,7 +344,7 @@ schema: olm.bundle
   fbc-v4-14-rjwkj	True	Merge pull request #92 from jordigilh/release/stage/1.2.0-rc11
   ```
 
-  The last one matches the source branch for the PR and it's Integration Tests
+  The last one matches the source branch for the PR and its Integration Tests
   are successful.
 
   ```console
@@ -426,7 +426,7 @@ schema: olm.bundle
 
 
 ### Production release
-A pre-requisite to release to production is for the controller and bundle images
+A prerequisite to release to production is for the controller and bundle images
 to have been released to the staging registry. There is no shortcut that
 bypasses staging for this. However, releasing the image to the production
 registry does not deviate much from releasing to staging, even though its
@@ -491,7 +491,7 @@ If the release fails, follow the [troubleshooting](#release-pipeline-failed)
 guide to find out the root cause.
 
 * Validate that the container images are in the production registry by
-  inspecting them with skopeo. The pullspec of the images are defined in the
+  inspecting them with Skopeo. The pullspec of the images are defined in the
   advisory manifest:
 
 ```console
@@ -510,7 +510,7 @@ changes to the digest.
 #### Releasing a new FBC index to production
 Releasing the fragment is a simple step to update the FBC graph manifest to
 point to the production registry and run the command to generate the catalog.
-The lastest commit in the repo should reflect the bundle's container image
+The latest commit in the repo should reflect the bundle's container image
 pullspec being the same as the one in the snapshot we retrieved from the stage
 build.
 
@@ -587,7 +587,7 @@ schema: olm.bundle
   fbc-v4-14-k3ksj	True	Merge pull request #93 from jordigilh/release/prod/1.2.0-rc11
   ```
 
-  The last one matches the source branch for the PR and it's Integration Tests
+  The last one matches the source branch for the PR and its Integration Tests
   are successful.
 
   ```console
@@ -635,7 +635,7 @@ for support" ticket in #konflux-users.
 
 ### Release pipeline failed
 
-If the release fails, you'll need to indentify which task failed and why. This
+If the release fails, you'll need to identify which task failed and why. This
 gets a bit tricky as you'll have to jump over different objects until you get
 the information you seek. First, you'll need to get the pipelinerun from the
 status in the release. The following command will list the failed tasksrun
@@ -704,5 +704,5 @@ registry.
 ## Command tips
 * Retrieve the components for a given application:
 ```console
-oc get components -ojsonpath='{range .items[?(@.spec.application=="helm-operator-1-2")]}{.metadata.name}{"\n"}{end}}'
+oc get components -ojsonpath='{range .items[?(@.spec.application=="helm-operator-1-2")]}{.metadata.name}{"\n"}{end}'
 ```
