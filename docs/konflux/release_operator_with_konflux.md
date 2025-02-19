@@ -28,6 +28,16 @@ To be able to release the operator, you will need first to have access to the or
 Accessing the Konflux cluster via oc CLI requires an auth token from the OCP. Once you've been added to the `orchestrator-releng` workspace, head to [this URL](https://oauth-openshift.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/oauth/token/request) to obtain a new token and login to the
 Konflux cluster.
 
+### Preparation for Konflux Release
+
+Make sure you have already manually released the orchestrator helm operator before starting a Konflux release.\
+Follow the steps outlined in this [guide](https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main?tab=readme-ov-file#preparing-the-code-for-releasing).
+
+**It's crucial to determine the _appropriate releasing scenario_:**
+-   **Manual Release:** Suitable for local development or early QE testing. Instructions can be found [here](https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main?tab=readme-ov-file#manual-release-for-upstream-only).
+-   **Konflux Managed Release:** Designed for staging and production environments. Proceed with the instructions in the [Releasing](#releasing) section.
+
+
 ## Releasing
 Releasing the operator is a 3 stage operation:
 * Build the container images using Konflux's pipelines as part of a PR merge. The bundle image needs to be built with the latest controller image so that they are matched. This is usually handled via Konflux's nudges that trigger PRs with an updated digest of the controller to the bundle after a successful controller PR is merged.
