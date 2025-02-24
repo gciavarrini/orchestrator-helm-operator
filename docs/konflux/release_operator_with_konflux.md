@@ -69,6 +69,214 @@ Follow the steps outlined in this
     environments. Proceed with the instructions in the [Releasing](#releasing)
     section.
 
+Once QE is done with early testing and gives the green light, follow the outlines 
+process below carefully to add the configurations/manifests in order to prepare 
+for konflux release. 
+
+These configurations are added in the [konflux releae data repo](https://gitlab.cee.redhat.com/releng/konflux-release-data).
+To get access to the repo as a CODEOWNER, please reach out to  @jordigilh, @masayag, 
+@gciavarr, or @jubah. Once you have the right access, create a branch from main 
+<insert-branch-name>.
+
+#### Add ReleasePlanAdmission (RPA) for New Release
+* Navigate to [orchestrator RPA config folder](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/config/stone-prd-rh01.pg1f.p1/product/ReleasePlanAdmission/orchestrator-releng?ref_type=heads)
+* Add a new RPA for the staging helm-operator and follow naming convention `helm-operator-staging-1.x.yaml.`\
+Example of staging RPA manifest for 1.5 release.
+```yaml
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlanAdmission
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: "true"
+    pp.engineering.redhat.com/business-unit: application-developer
+  name: helm-operator-staging-1-5
+  namespace: rhtap-releng-tenant
+spec:
+  applications:
+    - helm-operator-1-5
+  origin: orchestrator-releng-tenant
+  policy: registry-orchestrator-releng
+  data:
+    releaseNotes:
+      product_id: 851
+      product_name: RHDH
+      product_version: "1.5"
+      type: "RHBA"
+      synopsis: "Red Hat Developer Hub Orchestrator"
+      topic: |
+        The developer preview release of Red Hat Developer Hub Orchestrator.
+      description: |
+        Red Hat Developer Hub Orchestrator is a plugin that enables serverless asynchronous workflows to Backstage.
+        This plugin is a development preview release.
+      solution: |
+        RHDH Orchestrator introduces serverless asynchronous workflows to Backstage, with a focus on facilitating the
+        transition of applications to the cloud, onboarding developers, and enabling users to create workflows for
+        backstage actions or external systems.
+      references:
+        - https://www.redhat.com/en/technologies/cloud-computing/developer-hub
+        - https://rhdhorchestrator.io
+    sign:
+      configMapName: "hacbs-signing-pipeline-config-staging-redhatbeta2"
+      cosignSecretName: konflux-cosign-signing-stage
+    mapping:
+      components:
+        - name: controller-rhel9-operator-1-5
+          repository: "registry.stage.redhat.io/rhdh-orchestrator-dev-preview-beta/controller-rhel9-operator"
+        - name: orchestrator-operator-bundle-1-5
+          repository: "registry.stage.redhat.io/rhdh-orchestrator-dev-preview-beta/orchestrator-operator-bundle"
+      defaults:
+        tags:
+          - "1.5"
+          - "1.5-{{ timestamp }}"
+          - "{{ git_sha }}"
+          - "{{ git_short_sha }}"
+        pushSourceContainer: true
+    pyxis:
+      secret: pyxis-staging-secret
+      server: stage
+  pipeline:
+    pipelineRef:
+      resolver: git
+      params:
+        - name: url
+          value: https://github.com/konflux-ci/release-service-catalog.git
+        - name: revision
+          value: production
+        - name: pathInRepo
+          value: "pipelines/managed/rh-advisories/rh-advisories.yaml"
+    serviceAccountName: release-registry-staging
+    timeouts:
+      pipeline: "01h0m0s"
+      tasks: 01h0m0s
+```
+* Add a new RPA for the production helm-operator and follow naming convention `helm-operator-prod-1.x.yaml.`\
+Example of production RPA manifest for 1.5 release.
+```yaml
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlanAdmission
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: "true"
+    pp.engineering.redhat.com/business-unit: application-developer
+  name: helm-operator-prod-1-5
+  namespace: rhtap-releng-tenant
+spec:
+  applications:
+    - helm-operator-1-5
+  origin: orchestrator-releng-tenant
+  policy: registry-orchestrator-releng
+  data:
+    releaseNotes:
+      product_id: 851
+      product_name: RHDH
+      product_version: "1.5"
+      type: "RHBA"
+      synopsis: "Red Hat Developer Hub Orchestrator"
+      topic: |
+        The developer preview release of Red Hat Developer Hub Orchestrator.
+      description: |
+        Red Hat Developer Hub Orchestrator is a plugin that enables serverless asynchronous workflows to Backstage.
+        This plugin is a development preview release.
+      solution: |
+        RHDH Orchestrator introduces serverless asynchronous workflows to Backstage, with a focus on facilitating the
+        transition of applications to the cloud, onboarding developers, and enabling users to create workflows for
+        backstage actions or external systems.
+      references:
+        - https://www.redhat.com/en/technologies/cloud-computing/developer-hub
+        - https://rhdhorchestrator.io
+    sign:
+      configMapName: "hacbs-signing-pipeline-config-redhatbeta2"
+      cosignSecretName: konflux-cosign-signing-stage
+    mapping:
+      components:
+        - name: controller-rhel9-operator-1-5
+          repository: "registry.redhat.io/rhdh-orchestrator-dev-preview-beta/controller-rhel9-operator"
+        - name: orchestrator-operator-bundle-1-5
+          repository: "registry.redhat.io/rhdh-orchestrator-dev-preview-beta/orchestrator-operator-bundle"
+      defaults:
+        tags:
+          - "1.5"
+          - "1.5-{{ timestamp }}"
+        pushSourceContainer: true
+    pyxis:
+      secret: pyxis-prod-secret
+      server: production
+  pipeline:
+    pipelineRef:
+      resolver: git
+      params:
+        - name: url
+          value: "https://github.com/konflux-ci/release-service-catalog.git"
+        - name: revision
+          value: production
+        - name: pathInRepo
+          value: "pipelines/managed/rh-advisories/rh-advisories.yaml"
+    serviceAccountName: release-registry-prod
+    timeouts:
+      pipeline: "01h0m0s"
+      tasks: 01h0m0s
+```
+* Update the staging RPA for FBC Index.
+  If necessary, update the RPA for the FBC index when we want to support a new OCP version.
+  Update the existing `orchestrator-fbc-staging-index-v4-15-plus` by adding the new FBC under
+  the `spec.applications` list.
+```yaml
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlanAdmission
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: "true"
+    pp.engineering.redhat.com/business-unit: application-developer
+  name: orchestrator-fbc-staging-index-v4-15-plus
+  namespace: rhtap-releng-tenant
+spec:
+  applications:
+    - fbc-v4-15
+    - fbc-v4-16
+    - fbc-v4-17
+  data:
+    releaseNotes:
+      product_id: 851
+      product_name: RHDH
+      product_version: fbc
+      ...
+  origin: orchestrator-releng-tenant
+  policy: fbc-stage
+```
+
+* Update the production RPA for FBC Index.
+If necessary, update the RPA for the FBC index when we want to support a new OCP version.
+Update the existing `orchestrator-fbc-prod-index-v4-15-plus` by adding the new FBC under 
+the `spec.applications` list.
+
+```yaml
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlanAdmission
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: "true"
+    pp.engineering.redhat.com/business-unit: application-developer
+  name: orchestrator-fbc-prod-index-v4-15-plus
+  namespace: rhtap-releng-tenant
+spec:
+  applications:
+    - fbc-v4-15
+    - fbc-v4-16
+    - fbc-v4-17
+  data:
+    releaseNotes:
+      product_id: 851
+      product_name: RHDH
+      product_version: fbc
+      ...
+  origin: orchestrator-releng-tenant
+  policy: registry-orchestrator-fbc-prod-with-weekends
+```
+
 
 ## Releasing
 Releasing the operator is a 3 stage operation:
