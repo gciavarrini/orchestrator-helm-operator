@@ -78,7 +78,277 @@ To get access to the repo as a CODEOWNER, please reach out to  @jordigilh, @masa
 @gciavarr, or @jubah. Once you have the right access, create a branch from main 
 <insert-branch-name>.
 
-#### Add ReleasePlanAdmission (RPA) for New Release
+#### Create Helm Operator Config For New Release
+* Navigate to [orchestrator tenant config](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant/operator?ref_type=heads)
+* Add a new config file `helm-operator-1.x.yaml` for new release.
+This should contain the Application, Component, ReleasePlan, ImageRepository, IntegrationTestScenario.
+Example for 1.5 release `helm-operator-1-5.yaml`
+```yaml
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Application
+metadata:
+  name: helm-operator-1-5
+  namespace: orchestrator-releng-tenant
+spec:
+  displayName: helm operator (release-1-5)
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  name: controller-rhel9-operator-1-5
+  namespace: orchestrator-releng-tenant
+spec:
+  application: helm-operator-1-5
+  build-nudges-ref:
+    - orchestrator-operator-bundle-1-5
+  componentName: controller-rhel9-operator-1-5
+  containerImage: quay.io/redhat-user-workloads/orchestrator-releng-tenant/controller-rhel9-operator
+  source:
+    git:
+      dockerfileUrl: Dockerfile
+      revision: main
+      url: https://github.com/rhdhorchestrator/orchestrator-helm-operator.git
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  name: orchestrator-operator-bundle-1-5
+  namespace: orchestrator-releng-tenant
+spec:
+  application: helm-operator-1-5
+  componentName: orchestrator-operator-bundle-1-5
+  containerImage: quay.io/redhat-user-workloads/orchestrator-releng-tenant/orchestrator-operator-bundle
+  source:
+    git:
+      dockerfileUrl: bundle.konflux.Dockerfile
+      revision: main
+      url: https://github.com/rhdhorchestrator/orchestrator-helm-operator.git
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ImageRepository
+metadata:
+  annotations:
+    image-controller.appstudio.redhat.com/update-component-image: "true"
+  name: imagerepository-for-helm-operator-1-5-controller-rhel9-operator-1-5
+  namespace: orchestrator-releng-tenant
+  labels:
+    appstudio.redhat.com/application: helm-operator-1-5
+    appstudio.redhat.com/component: controller-rhel9-operator-1-5
+spec:
+  image:
+    visibility: public
+    name: orchestrator-releng-tenant/controller-rhel9-operator
+  notifications:
+    - config:
+        url: https://bombino.api.redhat.com/v1/sbom/quay/push
+      event: repo_push
+      method: webhook
+      title: SBOM-event-to-Bombino
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ImageRepository
+metadata:
+  annotations:
+    image-controller.appstudio.redhat.com/update-component-image: "true"
+  name: imagerepository-for-helm-operator-1-5-orchestrator-operator-bundle-1-5
+  namespace: orchestrator-releng-tenant
+  labels:
+    appstudio.redhat.com/application: helm-operator-1-5
+    appstudio.redhat.com/component: orchestrator-operator-bundle-1-5
+spec:
+  image:
+    visibility: public
+    name: orchestrator-releng-tenant/orchestrator-operator-bundle
+  notifications:
+    - config:
+        url: https://bombino.api.redhat.com/v1/sbom/quay/push
+      event: repo_push
+      method: webhook
+      title: SBOM-event-to-Bombino
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  name: helm-operator-staging-1-5
+  labels:
+    release.appstudio.openshift.io/auto-release: "false"
+    release.appstudio.openshift.io/releasePlanAdmission: helm-operator-staging-1-5
+    release.appstudio.openshift.io/standing-attribution: "true"
+spec:
+  application: helm-operator-1-5
+  target: rhtap-releng-tenant
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  name: helm-operator-prod-1-5
+  labels:
+    release.appstudio.openshift.io/auto-release: "false"
+    release.appstudio.openshift.io/releasePlanAdmission: helm-operator-prod-1-5
+    release.appstudio.openshift.io/standing-attribution: "true"
+spec:
+  application: helm-operator-1-5
+  target: rhtap-releng-tenant
+---
+apiVersion: appstudio.redhat.com/v1beta2
+kind: IntegrationTestScenario
+metadata:
+  name: helm-operator-enterprise-contract-1-5
+  namespace: orchestrator-releng-tenant
+spec:
+  params:
+    - name: POLICY_CONFIGURATION
+      value: rhtap-releng-tenant/registry-orchestrator-releng
+    - name: SINGLE_COMPONENT
+      value: "true"
+  application: helm-operator-1-5
+  contexts:
+    - description: Application testing
+      name: application
+  resolverRef:
+    params:
+      - name: url
+        value: "https://github.com/konflux-ci/build-definitions"
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipelines/enterprise-contract.yaml
+    resolver: git
+```
+* Update the [kustomization file](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/tenants-config/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant/operator/kustomization.yaml?ref_type=heads#L4). 
+Add the new `helm-operator-1-x.yaml` to the resource list.
+Example for 1.5 release `helm-operator-1-5.yaml`
+```yaml
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helm-operator-1-3.yaml
+  - helm-operator-1-4.yaml
+  - helm-operator-1-5.yaml
+```
+
+
+#### Create FBC Config For New OCP Version
+* Navigate to [orchestrator tenant config](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant?ref_type=heads)
+* Add a new folder for the new FBC `fbc-v4-17` for referencing the newly supported OCP version.
+Example folder for [v4.17](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/tenants-config/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant/fbc-v4-17/kustomization.yaml?ref_type=heads)
+* Add a new config file `fbc-v4-17.yaml` for new OCP version.
+This should contain the Application, Component, ReleasePlan, ImageRepository, IntegrationTestScenario.
+Example for `v4.17` OCP version `fbc-v4-17.yaml`
+```yaml
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Application
+metadata:
+  name: fbc-v4-17
+  namespace: orchestrator-releng-tenant
+spec:
+  displayName: FBC v4.17
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  name: fbc-v4-17
+  namespace: orchestrator-releng-tenant
+spec:
+  application: fbc-v4-17
+  componentName: fbc-v4-17
+  containerImage: quay.io/redhat-user-workloads/orchestrator-releng-tenant/fbc-v4-17
+  source:
+    git:
+      context: v4.17
+      dockerfileUrl: catalog.Dockerfile
+      revision: main
+      url: https://github.com/rhdhorchestrator/orchestrator-fbc.git
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ImageRepository
+metadata:
+  annotations:
+    image-controller.appstudio.redhat.com/update-component-image: "true"
+  name: imagerepository-for-fbc-v4-17
+  namespace: orchestrator-releng-tenant
+  labels:
+    appstudio.redhat.com/application: fbc-v4-17
+    appstudio.redhat.com/component: fbc-v4-17
+spec:
+  image:
+    name: orchestrator-releng-tenant/fbc-v4-17
+    visibility: public
+  notifications:
+    - config:
+        url: https://bombino.api.redhat.com/v1/sbom/quay/push
+      event: repo_push
+      method: webhook
+      title: SBOM-event-to-Bombino
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: "false"
+    release.appstudio.openshift.io/releasePlanAdmission: orchestrator-fbc-prod-index-v4-15-plus
+    release.appstudio.openshift.io/standing-attribution: "true"
+  name: fbc-v4-17-release-as-production-fbc
+  namespace: orchestrator-releng-tenant
+spec:
+  application: fbc-v4-17
+  releaseGracePeriodDays: 7
+  target: rhtap-releng-tenant
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  name: fbc-v4-17-release-as-staging-fbc
+  namespace: orchestrator-releng-tenant
+  labels:
+    release.appstudio.openshift.io/auto-release: "false"
+    release.appstudio.openshift.io/releasePlanAdmission: orchestrator-fbc-staging-index-v4-15-plus
+    release.appstudio.openshift.io/standing-attribution: "true"
+spec:
+  application: fbc-v4-17
+  target: rhtap-releng-tenant
+---
+apiVersion: appstudio.redhat.com/v1beta2
+kind: IntegrationTestScenario
+metadata:
+  name: fbc-v4-17-enterprise-contract
+  namespace: orchestrator-releng-tenant
+spec:
+  application: fbc-v4-17
+  params:
+    - name: POLICY_CONFIGURATION
+      value: rhtap-releng-tenant/fbc-stage
+  resolverRef:
+    params:
+      - name: url
+        value: "https://github.com/konflux-ci/build-definitions"
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipelines/enterprise-contract.yaml
+    resolver: git
+```
+* Add the `kustomization.yaml` file under the same folder.
+Example for `v4.17`
+```yaml
+---
+kind: Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+# Naming: <API_GROUP>/<KIND_PLURAL>/<METADATA_NAME>
+resources:
+  - fbc-v4-17.yaml
+```
+
+#### Run Build Manifest Script
+* Run the `build-manifests.sh` script (found [here](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config?ref_type=heads)).
+This will added and/update the manifests under the [auto-generated folder](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/auto-generated/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant?ref_type=heads). 
+Commit these change in addition to any other relevant additions.
+
+
+#### Add ReleasePlanAdmission (RPA) For New Release
 * Navigate to [orchestrator RPA config folder](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/config/stone-prd-rh01.pg1f.p1/product/ReleasePlanAdmission/orchestrator-releng?ref_type=heads)
 * Add a new RPA for the staging helm-operator and follow naming convention `helm-operator-staging-1.x.yaml.`\
 Example of staging RPA manifest for 1.5 release.
@@ -276,6 +546,11 @@ spec:
   origin: orchestrator-releng-tenant
   policy: registry-orchestrator-fbc-prod-with-weekends
 ```
+
+#### Create Merge Request
+* After pushing the changes, create a merge request, have it reviewed approved. 
+* After the prep branch is merged to main, ArgoCD will apply those change 
+and you should see the components in konflux UI.
 
 
 ## Releasing
