@@ -229,7 +229,6 @@ resources:
   - helm-operator-1-5.yaml
 ```
 
-
 #### Create FBC Config For New OCP Version
 * Navigate to [orchestrator tenant config](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant?ref_type=heads)
 * Add a new folder for the new FBC `fbc-v4-17` for referencing the newly supported OCP version.
@@ -346,7 +345,6 @@ resources:
 * Run the `build-manifests.sh` script (found [here](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config?ref_type=heads)).
 This will added and/update the manifests under the [auto-generated folder](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/auto-generated/cluster/stone-prd-rh01/tenants/orchestrator-releng-tenant?ref_type=heads). 
 Commit these change in addition to any other relevant additions.
-
 
 #### Add ReleasePlanAdmission (RPA) For New Release
 * Navigate to [orchestrator RPA config folder](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/config/stone-prd-rh01.pg1f.p1/product/ReleasePlanAdmission/orchestrator-releng?ref_type=heads)
@@ -550,7 +548,60 @@ spec:
 #### Create Merge Request
 * After pushing the changes, create a merge request, have it reviewed approved. 
 * After the prep branch is merged to main, ArgoCD will apply those change 
-and you should see the components in konflux UI.
+and you should see the components in Konflux UI.
+
+#### Prep Helm Orchestrator Repo For Release
+Once development is complete and QE gives the green light, create a branch from main
+* Navigate to the [.tekton folder](https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/.tekton) 
+and update the pipeline files names to suffix with `xxx-1.x.yaml`
+Example for 1.5 release branch
+```console
+- controller-rhel9-operator-on-pull-request-1-5.yaml
+- controller-rhel9-operator-on-push-1-5.yaml
+- orchestrator-operator-bundle-on-pull-request-1-5.yaml
+- orchestrator-operator-bundle-on-push-1-5.yaml
+```
+* In each of the pipeline config file listed above, in the `pipelinesascode.tekton.dev/on-cel-expression`, 
+update the `target_branch` from main to `release-1.x`
+* Update the labels, name, component and any relevant change in each pipeline config.
+
+Example of 1.5 `controller-rhel9-operator-on-pull-request-1-5.yaml`
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/rhdhorchestrator/orchestrator-helm-operator?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "release-1.5" && ("Makefile".pathChanged() || "Dockerfile".pathChanged() || "config/***".pathChanged() || "helm-charts/***".pathChanged() || ".tekton/controller-rhel9-operator-on-push-1-5.yaml".pathChanged())
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: helm-operator-1-5
+    appstudio.openshift.io/component: controller-rhel9-operator-1-5
+    pipelines.appstudio.openshift.io/type: build
+  name: controller-rhel9-operator-on-push-1-5
+  namespace: orchestrator-releng-tenant
+.....
+```
+These changes should be done via PR branch and merged into `release-1-5`
+
+#### Update Main branch Via PR
+* Navigate to the [.tekton folder](https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/.tekton)
+  and update the pipeline files names suffixed with the incremental (next) release `xxx-1.x.yaml`
+Example assuming 1.6 is the next release.
+```console
+- controller-rhel9-operator-on-pull-request-1-6.yaml
+- controller-rhel9-operator-on-push-1-6.yaml
+- orchestrator-operator-bundle-on-pull-request-1-6.yaml
+- orchestrator-operator-bundle-on-push-1-6.yaml
+```
+* In each of the pipeline config file listed above, in the `pipelinesascode.tekton.dev/on-cel-expression`,
+  ensure the `target_branch` points to main.
+* Update the labels, name, component and any relevant change in each pipeline config.
+
+These changes should be done via PR branch and merged into `main` branch
 
 
 ## Releasing
