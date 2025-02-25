@@ -11,15 +11,32 @@ Please visit the [README.md](https://github.com/rhdhorchestrator/orchestrator-he
 Follow these steps to release a new version of the operator:
 
 1. Pull a fresh copy of the repository. Alternatively pull the latest from main on your existing repository and ensure that the HEAD matches the upstream's HEAD commit hash.
-1. Create a new branch, example `release/1.2.0-rc7`.
-1. Update the Makefile to increment the z-stream value by 1 and commit the change to the Makefile as `Release 1.2.0-rc8"`. Example commit: https://github.com/rhdhorchestrator/orchestrator-helm-operator/commit/0bcedf59d03dd0ace380c342ebdb0187d82ad8d6
+1. Create a new branch, example `release/1.4.0-rc13`.
+1. Update the Makefile to increment the z-stream value by 1. (See [example commit](https://github.com/rhdhorchestrator/orchestrator-helm-operator/commit/0bcedf59d03dd0ace380c342ebdb0187d82ad8d6))
+1. In the `Dockerfile` update the `release` and `version` labels with the new release version. For example
+```
+LABEL release="1.4.0-rc13"
+LABEL version="1.4.0-rc13"
+```
+1. In `helm-charts/orchestrator/Chart.yaml` update the chart version to match the new release. For example `version: 1.4.0-r13`
+1. If you need to update the orchestrator plugin version, in `helm-charts/orchestrator/values.yaml` update both package name and integrity for `orchestrator` and `orchestratorBackend` using the values available in orchestrator plugin tag ([example tag](https://github.com/rhdhorchestrator/orchestrator-plugins-internal-release/releases/tag/1.4.0-rc.9)). For example:
+```yaml
+orchestrator:
+  package: "backstage-plugin-orchestrator-1.4.0-rc.9.tgz"
+  integrity: sha512-YXfXCoBZT0nIoseF5pyRng8GAHea46slp1vk++Va1ap/hqb8paM+uz/T8/WcJRUbodFkf/x0sBwO3s+RDI3GXQ==
+orchestratorBackend:
+  package: "backstage-plugin-orchestrator-backend-dynamic-1.4.0-rc.9.tgz"
+  integrity: sha512-v8VzVpWFSjC8GI6jPEeCNVXFiFIHf+hHCXUH72RXxHOEYhWSwxwo4PLtdlH7Z46p+QNtmNWJzSExD0i23VKwjA==
+```
+1. Run `make bundle`
+1. Commit the changes as `Release 1.4.0-rc13"`. (See [example commit](https://github.com/rhdhorchestrator/orchestrator-helm-operator/pull/544/commits/d556fc4376b2c60cc9d60d6ee8533bae40d49ea2))
 1. Push the commit.
 1. Create a new PR against main, unless the changes are targeting a specific release.
-1. Get the PR reviewed by the owner of the changes to the chart or by another team member. Two more pair of eyes are always welcome for these kind of things.
+1. Get the PR reviewed by the owner of the changes to the chart or by another team member. Two more pairs of eyes are always welcome for this kind of things.
 1. Merge the PR.
 
 At this point releasing the operator can branch into 2 scenarios:
-* Manual release for local consumption. This kind of releases are only meant to be used for local development or earlly QE testing, not for general consumption in the RH catalog.
+* Manual release for local consumption. This kind of releases are only meant to be used for local development or early QE testing, not for general consumption in the RH catalog.
 * Konflux managed release for staging and production environments. It uses the Konflux pipelines to bundle the images to the Red Hat Operator Ecosystems Catalog.
 
 ## Konflux release (for downstream)
