@@ -4,30 +4,113 @@ Meta Operator for deploying the Orchestrator helm charts
 # Installing the operator
 Please visit the [README.md](https://github.com/rhdhorchestrator/orchestrator-helm-operator/blob/main/docs/README.md) page and follow the guide to install the operator in your cluster.
 
+## Update the orchestrator plugin helm chart (if needed)
+If you need to update the orchestrator plugin version, then you need to:
+
+1. Update the Helm Chart Values.
+
+    In the file `helm-charts/orchestrator/values.yaml`, update the following fields for both `orchestrator` and `orchestratorBackend`:
+      * _Package Name_: Update the package name using the values available in the orchestrator plugin tag.
+      * _Integrity_: Update the integrity hash for both components.
+    Refer to an [example tag](https://github.com/rhdhorchestrator/orchestrator-plugins-internal-release/releases/tag/1.4.0-rc.9) for the correct values.
+
+    Example:
+    ```yaml
+    orchestrator:
+      package: "backstage-plugin-orchestrator-1.4.0-rc.9.tgz"
+      integrity: sha512-YXfXCoBZT0nIoseF5pyRng8GAHea46slp1vk++Va1ap/hqb8paM+uz/T8/WcJRUbodFkf/x0sBwO3s+RDI3GXQ==
+    orchestratorBackend:
+      package: "backstage-plugin-orchestrator-backend-dynamic-1.4.0-rc.9.tgz"
+      integrity: sha512-v8VzVpWFSjC8GI6jPEeCNVXFiFIHf+hHCXUH72RXxHOEYhWSwxwo4PLtdlH7Z46p+QNtmNWJzSExD0i23VKwjA==
+    ```
+1. Update the CRD
+  In the file `config/crd/bases/rhdh.redhat.com_orchestrators.yaml`, update the following properties:
+     * _Scope_: `rhdhPlugins.properties.scope.default`
+     * _Orchestrator Package_: `rhdhPlugins.properties.orchestrator.properties.package.default`
+     * _Orchestrator Integrity_: `rhdhPlugins.properties.orchestrator.properties.integrity.default`
+     * _Orchestrator Backend Package_: `rhdhPlugins.properties.orchestratorBackend.properties.package.default`
+     * _Orchestrator Backend Integrity_: `rhdhPlugins.properties.orchestratorBackend.properties.integrity.default`
+  Example:
+  ```yaml
+  rhdhPlugins:
+    description: Backstage plugins
+    properties:
+      npmRegistry:
+        description: NPM registry is defined already in the container, but sometimes the registry need to be modified to use different versions of the plugin, for example staging (https://npm.stage.registry.redhat.com) or development repositories
+        default: "https://npm.registry.redhat.com"
+        type: string
+      scope:
+        description: Scope of the plugins
+        default: "https://github.com/rhdhorchestrator/orchestrator-plugins-internal-release/releases/download/1.4.0-rc.8"
+        type: string
+      orchestrator:
+        description: Orchestrator plugin information
+        properties:
+          package:
+            description: Package name
+            default: backstage-plugin-orchestrator-1.4.0-rc.8.tgz
+            type: string
+          integrity:
+            description: Package SHA integrity
+            default: sha512-KKFCu1J+G5TOk/2yQ6B5Z17bxq2lAUeaFukWS60UTth7LYFXwFbOi0/rp1kUUZ7aLxDmrBI/gM6G5eg3Tehg0A==
+            type: string
+        type: object
+      orchestratorBackend:
+        description: Orchestrator backend plugin information
+        properties:
+          package:
+            description: Package name
+            type: string
+            default: backstage-plugin-orchestrator-backend-dynamic-1.4.0-rc.8.tgz
+          integrity:
+            description: Package SHA integrity
+            type: string
+            default: sha512-mCV5Nx5KkXbzd2d5BCX5ARgaoWWn1e8uDaBIOegiTUcDy0NxyVk//MIpp0KKpBe/DbSBVHKcTFgx41KetLUewA==
+        type: object
+  ```
+1. Update the samples
+    In the file `config/samples/_v1alpha2_orchestrator.yaml`, update the following properties:
+      * _Scope_: `rhdhPlugins.properties.scope.default`
+      * _Orchestrator Package_: `rhdhPlugins.properties.orchestrator.properties.package.default`
+      * _Orchestrator Integrity_: `rhdhPlugins.properties.orchestrator.properties.integrity.default`
+      * _Orchestrator Backend Package_: `rhdhPlugins.properties.orchestratorBackend.properties.package.default`
+      * _Orchestrator Backend Integrity_: `rhdhPlugins.properties.orchestratorBackend.properties.integrity.default`
+
+
+    Example:
+
+    ```yaml
+    rhdhPlugins: # RHDH plugins required for the Orchestrator
+      npmRegistry: "https://npm.registry.redhat.com" # NPM registry is defined already in the container, but sometimes the registry needs to be modified to use different versions of the plugin, for example: staging (https://npm.stage.registry.redhat.com) or development repositories
+      scope: "https://github.com/rhdhorchestrator/orchestrator-plugins-internal-release/releases/download/1.4.0-rc.8"
+      orchestrator:
+        package: "backstage-plugin-orchestrator-1.4.0-rc.8.tgz"
+        integrity: sha512-KKFCu1J+G5TOk/2yQ6B5Z17bxq2lAUeaFukWS60UTth7LYFXwFbOi0/rp1kUUZ7aLxDmrBI/gM6G5eg3Tehg0A==
+      orchestratorBackend:
+        package: "backstage-plugin-orchestrator-backend-dynamic-1.4.0-rc.8.tgz"
+        integrity: sha512-mCV5Nx5KkXbzd2d5BCX5ARgaoWWn1e8uDaBIOegiTUcDy0NxyVk//MIpp0KKpBe/DbSBVHKcTFgx41KetLUewA==
+      notificationsEmail:
+        enabled: false # whether to install the notifications email plugin; requires setting of hostname and credentials in backstage secret to enable. See value backstage-backend-auth-secret.
+        port: 587 # SMTP server port
+        sender: "" # The email sender address
+        replyTo: "" # Reply-to address
+    ```
+
 ## Releasing the operator
 
-# Preparing the code for releasing
-
+#### Preparing the code for releasing
 Follow these steps to release a new version of the operator:
 
 1. Pull a fresh copy of the repository. Alternatively pull the latest from main on your existing repository and ensure that the HEAD matches the upstream's HEAD commit hash.
 1. Create a new branch, example `release/1.4.0-rc13`.
 1. Update the Makefile to increment the z-stream value by 1. (See [example commit](https://github.com/rhdhorchestrator/orchestrator-helm-operator/commit/0bcedf59d03dd0ace380c342ebdb0187d82ad8d6))
-1. In the `Dockerfile` update the `release` and `version` labels with the new release version. For example
-```
-LABEL release="1.4.0-rc13"
-LABEL version="1.4.0-rc13"
-```
+1. In the `Dockerfile` update the `release` and `version` labels with the new release version.  
+    For example
+    ```dockerfile
+    LABEL release="1.4.0-rc13"
+    LABEL version="1.4.0-rc13"
+    ```
 1. In `helm-charts/orchestrator/Chart.yaml` update the chart version to match the new release. For example `version: 1.4.0-r13`
-1. If you need to update the orchestrator plugin version, in `helm-charts/orchestrator/values.yaml` update both package name and integrity for `orchestrator` and `orchestratorBackend` using the values available in orchestrator plugin tag ([example tag](https://github.com/rhdhorchestrator/orchestrator-plugins-internal-release/releases/tag/1.4.0-rc.9)). For example:
-```yaml
-orchestrator:
-  package: "backstage-plugin-orchestrator-1.4.0-rc.9.tgz"
-  integrity: sha512-YXfXCoBZT0nIoseF5pyRng8GAHea46slp1vk++Va1ap/hqb8paM+uz/T8/WcJRUbodFkf/x0sBwO3s+RDI3GXQ==
-orchestratorBackend:
-  package: "backstage-plugin-orchestrator-backend-dynamic-1.4.0-rc.9.tgz"
-  integrity: sha512-v8VzVpWFSjC8GI6jPEeCNVXFiFIHf+hHCXUH72RXxHOEYhWSwxwo4PLtdlH7Z46p+QNtmNWJzSExD0i23VKwjA==
-```
 1. Run `make bundle`
 1. Commit the changes as `Release 1.4.0-rc13"`. (See [example commit](https://github.com/rhdhorchestrator/orchestrator-helm-operator/pull/544/commits/d556fc4376b2c60cc9d60d6ee8533bae40d49ea2))
 1. Push the commit.
